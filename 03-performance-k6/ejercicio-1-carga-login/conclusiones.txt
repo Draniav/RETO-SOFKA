@@ -1,0 +1,87 @@
+CONCLUSIONES Y HALLAZGOS - PRUEBA DE CARGA DEL LOGIN (FAKESTORE API)
+=====================================================================
+
+EJECUCIÓN
+---------
+  - Fecha: 10-11-2026 · Herramienta: k6 v2.3.0 en Windows 11, contra el servicio público.
+  - Escenario: modelo abierto (ramping-arrival-rate). Rampa de 30 s hasta 25 TPS, 2 min sostenidos
+    a 25 TPS y 10 s de descenso. Duración total: 160 s.
+  - Datos: 5 usuarios del CSV, usados en round-robin.
+  - Evidencia: reports/reporte-carga-login.html, reports/dashboard.html (gráficas en el tiempo),
+    reports/resumen-carga-login.txt y reports/resumen-carga-login.json.
+
+
+RESULTADOS FRENTE A LOS CRITERIOS DE ACEPTACIÓN
+-----------------------------------------------
+  Criterio                         Esperado        Obtenido                         Resultado
+  -------------------------------  --------------  -------------------------------  ---------
+  Throughput                       >= 20 TPS       21,96 TPS en promedio (incluye   CUMPLE
+                                                   rampas); 25 TPS sostenidos
+  Tiempo de respuesta máximo       <= 1.500 ms     719 ms (máximo absoluto)         CUMPLE
+  Tiempo de respuesta p(95)        < 1.500 ms      441 ms                           CUMPLE
+  Tasa de error                    < 3 %           0,03 % (1 de 3.514)              CUMPLE
+  Checks funcionales               > 97 %          99,98 % (10.540 de 10.542)       CUMPLE
+
+  Todos los thresholds se cumplieron y k6 terminó con código de salida 0.
+
+
+DETALLE DE TIEMPOS
+------------------
+  - Peticiones totales: 3.514
+  - Promedio 381,6 ms · mediana 376,1 ms · p(90) 419,8 ms · p(95) 441,0 ms · p(99) 508,2 ms · máx 719,2 ms
+  - La media y la mediana son casi iguales y el p(99) está cerca de la mediana: los tiempos son
+    estables, sin cola larga ni picos de degradación durante la carga sostenida.
+  - Casi todo el tiempo es espera del servidor (http_req_waiting = 381 ms en promedio). Conexión,
+    TLS, envío y recepción son despreciables gracias a la reutilización de conexiones (keep-alive):
+    el TLS solo se negocia al abrir cada conexión (máximo 97 ms).
+  - Solo se necesitaron hasta 12 VUs simultáneos para sostener 25 TPS
+    (Ley de Little: 25 TPS × 0,38 s ≈ 9,5 peticiones en curso).
+
+
+HALLAZGOS
+---------
+1. El servicio soporta la carga solicitada con amplio margen
+   Con 25 TPS (25 % más de lo exigido), el p(95) es de 441 ms, casi 3,4 veces por debajo del
+   límite de 1,5 s, y el máximo absoluto queda en menos de la mitad del límite.
+
+2. Un error aislado
+   Hubo 1 petición fallida (0,03 %): no devolvió 200/201 ni token. Al ser un único caso, no indica
+   degradación. Probablemente fue un error transitorio de red o del proveedor público. Para
+   identificar la causa en próximas ejecuciones, el script registra en consola el usuario, el
+   código HTTP, el error y la duración de cada fallo.
+
+3. Contrato real del servicio
+   El login responde 201 Created con { "token": "<JWT>" }, no 200 como sería habitual para un
+   login. Antes de escribir los checks se verificó el contrato con cURL. El script acepta 200 o
+   201 y valida que el token tenga formato JWT (tres segmentos separados por puntos).
+
+4. Las 5 credenciales del CSV son válidas
+   Todas generan token. La credencial con caracteres especiales ($, ^, *, @) se lee bien del CSV
+   y se envía correctamente en el JSON.
+
+5. Dependencia de librerías remotas
+   En un intento de ejecución, k6 no pudo resolver el DNS de jslib.k6.io y abortó antes de
+   empezar. Se reintentó con éxito. Para entornos de CI sin internet se recomienda descargar las
+   librerías (papaparse, k6-summary, k6-reporter) dentro del repositorio.
+
+
+CONSIDERACIONES
+---------------
+  - Es un servicio público y compartido: los resultados dependen de su carga en ese momento y de
+    la red entre el cliente y el servidor. Para una línea base confiable conviene repetir la
+    prueba varias veces o en horarios distintos.
+  - La prueba se ejecutó con poca carga y por poco tiempo, por respeto al servicio de terceros.
+    No se buscó el punto de quiebre.
+  - El promedio de TPS (21,96) incluye la rampa y el descenso. En la etapa sostenida, el
+    executor mantuvo los 25 TPS configurados.
+
+
+RECOMENDACIONES
+---------------
+  - Hacer una prueba de estrés escalonada (por ejemplo, 25 -> 50 -> 100 TPS) para encontrar la
+    capacidad máxima y el punto donde se incumplen 1,5 s o el 3 % de errores.
+  - Hacer una prueba de resistencia (soak) de 30-60 min para detectar degradación en el tiempo.
+  - Ejecutar desde un generador de carga cercano al servidor (o en la nube) para separar la
+    latencia de red del tiempo de procesamiento.
+  - Integrar la prueba en CI con thresholds como compuerta de calidad (el código de salida de k6
+    falla el pipeline).

@@ -1,0 +1,60 @@
+CONCLUSIONES Y HALLAZGOS - PRUEBA E2E OPENCART (GUEST CHECKOUT)
+==================================================================
+
+RESULTADO
+---------
+  - El escenario "Comprar dos productos con Guest Checkout hasta la confirmación del pedido"
+    terminó en estado EXITOSO: la tienda mostró el mensaje "Your order has been placed!".
+  - Se validó que los dos productos agregados (iPhone y MacBook) estaban en el carrito antes
+    del checkout.
+  - La evidencia (capturas de cada paso) está en reportes/serenity/index.html.
+
+
+HALLAZGOS
+---------
+1. Inventario sin control al comprar (posible defecto funcional)
+   Al agregar iPhone y MacBook, el carrito muestra el aviso
+   "Products marked with *** are not available in the desired quantity or not in stock!",
+   pero la tienda permite terminar la compra igual. Se puede vender un producto sin stock.
+   Puede ser una decisión de configuración del demo ("Stock Checkout" habilitado), pero en un
+   comercio real conviene confirmarlo con negocio.
+
+2. La búsqueda por nombre devuelve coincidencias parciales
+   Buscar "MacBook" devuelve "MacBook", "MacBook Air" y "MacBook Pro". La automatización
+   selecciona el producto por nombre exacto para no agregar uno que no corresponde.
+
+3. El checkout se carga por AJAX y con animaciones
+   Cada paso del acordeón (6 pasos) se carga de forma asíncrona y la lista de regiones se
+   recarga al elegir el país. Hacer clic sin esperar causa fallos intermitentes. Se resolvió con
+   esperas explícitas (el elemento debe ser clicable o la opción debe existir), sin pausas fijas.
+
+4. El sitio funciona sobre HTTP, sin cifrado
+   El checkout envía datos personales (nombre, correo, teléfono y dirección) sin HTTPS.
+   En un entorno real esto es un riesgo de seguridad.
+
+5. Productos con opciones obligatorias
+   Algunos productos de la página de inicio (por ejemplo, Apple Cinema 30" o Canon EOS 5D)
+   exigen opciones antes de agregarse al carrito. Se eligieron productos sin opciones
+   obligatorias para mantener el flujo enfocado en el objetivo de la prueba.
+
+
+DECISIONES DE DISEÑO
+--------------------
+  - Patrón Screenplay: separa el "qué" (tareas de negocio) del "cómo" (interacciones y
+    localizadores), lo que hace el código legible y fácil de mantener y reutilizar.
+  - Gherkin en español con lenguaje de negocio y tablas de datos. Los datos de prueba están en el
+    .feature y se convierten a un objeto de dominio inmutable (Comprador) con @DataTableType.
+  - Correo único por ejecución: la prueba es repetible e independiente.
+  - Localizadores centralizados por página, nombrados y descriptivos, para que el reporte sea
+    legible.
+  - Configuración externa (serenity.conf): navegador, modo headless y URL base sin tocar el código.
+  - Versiones de dependencias centralizadas en gradle.properties.
+
+
+RECOMENDACIONES
+---------------
+  - Agregar escenarios negativos: checkout con campos obligatorios vacíos, correo inválido,
+    no aceptar términos y condiciones, carrito vacío.
+  - Parametrizar los productos con un Esquema del escenario para cubrir más combinaciones.
+  - Validar también el subtotal y el total del pedido frente a los precios del catálogo.
+  - Integrar la ejecución en un pipeline de CI en modo headless, publicando el reporte de Serenity.

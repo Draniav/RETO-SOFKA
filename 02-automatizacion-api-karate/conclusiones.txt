@@ -1,0 +1,54 @@
+CONCLUSIONES Y HALLAZGOS - PRUEBAS DE USUARIOS EN LA API PETSTORE
+====================================================================
+
+RESULTADO
+---------
+  - 6 de 6 escenarios exitosos (5 casos individuales y 1 flujo E2E) en ~11 s, ejecutados en
+    paralelo con 3 hilos.
+  - Evidencia completa (peticiones y respuestas) en reportes/karate-reports/karate-summary.html.
+
+
+HALLAZGOS
+---------
+1. La API es eventualmente consistente
+   La PetStore pública tiene varias réplicas detrás de un balanceador. Un GET inmediatamente
+   posterior a un POST, PUT o DELETE puede no ver todavía el cambio (404 o datos anteriores),
+   lo que provoca pruebas intermitentes ("flaky"). Se resolvió con "retry until" sobre la
+   condición esperada (máximo 10 intentos cada 1 s), no con pausas fijas.
+
+2. Los códigos de estado no siguen las convenciones REST
+   - POST /user (crear) responde 200 en lugar de 201 Created.
+   - El campo "message" de la respuesta trae el id (al crear o actualizar) o el username
+     (al eliminar) como texto, en lugar de devolver el recurso.
+
+3. PUT reemplaza el recurso completo
+   Para cambiar solo el nombre y el correo hay que enviar el usuario completo. Si se envía solo
+   lo que cambia, el resto de los campos se pierde. Por eso la actualización parte del usuario
+   original y solo cambia firstName y email (karate.merge).
+
+4. Operaciones sin autenticación y contraseña expuesta
+   El servicio no exige autenticación para crear, modificar ni eliminar usuarios, y la
+   contraseña se devuelve en texto plano al consultar el usuario. En un sistema real ambos son
+   riesgos de seguridad.
+
+5. El usuario eliminado deja de existir
+   Después del DELETE, la consulta responde 404 con message "User not found", como se espera.
+
+
+DECISIONES DE DISEÑO
+--------------------
+  - Escenarios independientes: cada uno crea su propio usuario (username único) y lo elimina al
+    terminar con "afterScenario", aunque falle. Así se pueden ejecutar en paralelo y en cualquier
+    orden, sin dejar datos basura.
+  - Precondiciones en features reutilizables (helpers con @ignore) para no duplicar pasos.
+  - Validación del contrato con esquemas JSON, además de los valores puntuales.
+  - Configuración centralizada en karate-config.js (URL, timeouts y reintentos).
+  - Etiquetas por caso para ejecutar selectivamente.
+
+
+RECOMENDACIONES
+---------------
+  - Agregar casos negativos: consultar, actualizar o eliminar un usuario inexistente, y crear un
+    usuario con cuerpo inválido o vacío.
+  - Probar el login (/user/login) y la creación masiva (/user/createWithList).
+  - Ejecutar en CI publicando el reporte HTML de Karate.

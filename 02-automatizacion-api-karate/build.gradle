@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+}
+
+group = 'co.com.sofka'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 1.4.1 es la última versión compatible con Java 11 (desde 1.5.0 Karate exige Java 17)
+    testImplementation "com.intuit.karate:karate-junit5:${karateVersion}"
+}
+
+// Karate recomienda tener los .feature junto a las clases Java del mismo paquete
+sourceSets {
+    test {
+        resources {
+            srcDir file('src/test/java')
+            exclude '**/*.java'
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'karate.env', System.getProperty('karate.env', 'qa')
+    systemProperty 'karate.options', System.getProperty('karate.options', '')
+    outputs.upToDateWhen { false }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat 'full'
+    }
+}

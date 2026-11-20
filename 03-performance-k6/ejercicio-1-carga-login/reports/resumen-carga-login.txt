@@ -1,0 +1,22 @@
+     ✓ login: status 200/201
+     ✓ login: devuelve un token JWT
+     ✓ login: responde en <= 1500 ms
+
+   ✓ checks.........................: 100.00% ✓ 10542     ✗ 0   
+     data_received..................: 2.1 MB  13 kB/s
+     data_sent......................: 450 kB  2.8 kB/s
+     http_req_blocked...............: avg=1.21ms   min=0s       med=0s       max=435.56ms p(90)=0s       p(95)=0s       p(99)=0s      
+     http_req_connecting............: avg=614.14µs min=0s       med=0s       max=314.82ms p(90)=0s       p(95)=0s       p(99)=0s      
+   ✓ http_req_duration..............: avg=386.95ms min=314.75ms med=381.27ms max=811.16ms p(90)=428.37ms p(95)=451.63ms p(99)=509.84ms
+       { expected_response:true }...: avg=386.95ms min=314.75ms med=381.27ms max=811.16ms p(90)=428.37ms p(95)=451.63ms p(99)=509.84ms
+   ✓ http_req_failed................: 0.00%   ✓ 0         ✗ 3514
+     http_req_receiving.............: avg=351.3µs  min=0s       med=0s       max=33.41ms  p(90)=912.4µs  p(95)=1.04ms   p(99)=3.33ms  
+     http_req_sending...............: avg=609.47µs min=0s       med=582.45µs max=6.77ms   p(90)=1.02ms   p(95)=1.33ms   p(99)=1.9ms   
+     http_req_tls_handshaking.......: avg=583.93µs min=0s       med=0s       max=95.5ms   p(90)=0s       p(95)=0s       p(99)=0s      
+     http_req_waiting...............: avg=385.99ms min=314.02ms med=380.38ms max=811.16ms p(90)=427.25ms p(95)=450.86ms p(99)=509.39ms
+     http_reqs......................: 3514    21.961976/s
+     ✓ { escenario:carga_login }....: 3514    21.961976/s
+     iteration_duration.............: avg=388.57ms min=314.75ms med=381.81ms max=1.21s    p(90)=429.99ms p(95)=456.71ms p(99)=534.15ms
+     iterations.....................: 3514    21.961976/s
+     vus............................: 0       min=0       max=11
+     vus_max........................: 30      min=30      max=30
